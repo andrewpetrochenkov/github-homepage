@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+{ set +x; } 2>/dev/null
+
+usage() {
+    cat <<EOF 1>&2
+usage: $(basename $0) name [url]
+EOF
+    [[ $1 == "-h" ]] || [[ $1 == "--help" ]]; exit
+}
+
+[[ $1 == "-h" ]] || [[ $1 == "--help" ]] && usage "$@"
+
+[[ $# == 0 ]] || [[ $# -gt 2 ]] && usage
+
+[[ -z "$GITHUB_TOKEN" ]] && echo "ERROR: GITHUB_TOKEN environment variable required" 1>&2 && exit
+
+# https://developer.github.com/v3/repos/#get
+# https://developer.github.com/v3/repos/#edit
+
+owner="$(IFS=/;set $1;echo $1)"
+repo="$(IFS=/;set $1;echo ${!#})"
+
+[[ $1 != */* ]] && {
+    owner="$(set -o pipefail; curl -fs -u "$GITHUB_TOKEN:x-oauth-basic" https://api.github.com/user | grep '  "login":' | head -1 | awk -F'"' '{print $4}')"
+}
+tmp_output="$(mktemp)" || exit
+homepage="$2" || exit
+data="{\"name\":\"$repo\",\"homepage\":\"$homepage\"}"
+url="https://api.github.com/repos/$owner/$repo"
+
+http_code="$(
+    [[ $# == 1 ]] && set -- || set -- "$@" -X POST -d "$data"
+    set -- "$@" -s -w '%{http_code}' -s -u "$GITHUB_TOKEN:x-oauth-basic" -o "$tmp_output" "$url"
+    curl "$@" 1> /dev/null
+)" || exit
+[[ $http_code -ge 300 ]] && { cat "$tmp_output" ; exit 1; }
+
+[[ $# != 1 ]] && exit
+grep '  "homepage":' "$tmp_output" | head -1 | grep -v ': null,' | rev | cut -c 3- | rev | cut -c 16-

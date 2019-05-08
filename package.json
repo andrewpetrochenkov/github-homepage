@@ -1,0 +1,13 @@
+{
+  "name": "github-homepage",
+  "version": "2019.5.8",
+  "description": "get/set github repo homepage",
+  "keywords": [
+    "github"
+  ],
+  "homepage": "https://github.com/looking-for-a-job/github-homepage",
+  "license": "Unlicense",
+  "bin": {
+    "github-homepage": "./scripts/github-homepage"
+  }
+}
